@@ -6,53 +6,68 @@ lookup of default settings from EEPROM
 
 /*DACParams is a lookup table used to map commands to DAC channels.
 It also provides limits for new values... Scaler = 32768/Vref/gain*/
+#include <AD5360.h>
+#include <AD7689.h>
 
-typedef struct DACParams{char chName[8];DAC_channel channel;float min;float max;float scaler;};
+typedef struct DACParams{char chName[8];DAC_channel channel;float min;float max;float scaler; int8 ADCCh0;int8 ADCCh1;};
 struct DACparams const biasParams[]= {
-                                       {cb_Ppos,channel_00,-10,10,3276.8},//g=1
-                                       {cb_Pneg,channel_01,-10,10,3276.8},                      
-                                       {cb_DGpos,channel_02,-10,10,3276.8},
-                                       {cb_DGneg,channel_03,-10,10,3276.6},
-                                       {cb_Spos,channel_04,-10,10,3276.8},
-                                       {cb_Sneg,channel_05,-10,10,3276.8},
-                                       {cb_SWpos,channel_06,-10,10,3276.8},
-                                       {cb_SWneg,channel_07,-10,10,3276.8},
-                                       {cb_RGpos,channel_10,-10,10,3276.8},
-                                       {cb_RGneg,channel_11,-10,10,3276.8},
-                                       {cb_OG,channel_12,-10,10,3276.8},
-                                       {cb_RD,channel_13,-15,0,3276.8/1.5},
-                                       {cb_OD,channel_14,-23,0,3276.8/2.5},
-                                       {cb_BB,channel_15,0,52,3276.8/5.7},
-                                       {"\0",channel_16,0,0,3276.8},
-                                       {"\0",channel_17,0,0,3276.8}
+                                       {cb_Ppos,channel_00,-10,10,3276.8,0,0},//g=1
+                                       {cb_Pneg,channel_01,-10,10,3276.8,0,0},                      
+                                       {cb_DGpos,channel_02,-10,10,3276.8,0,0},
+                                       {cb_DGneg,channel_03,-10,10,3276.8,0,0},
+                                       {cb_Spos,channel_04,-10,10,3276.8,0,0},
+                                       {cb_Sneg,channel_05,-10,10,3276.8,0,0},
+                                       {cb_SWpos,channel_06,-10,10,3276.8,0,0},
+                                       {cb_SWneg,channel_07,-10,10,3276.8,0,0},
+                                       {cb_RGpos,channel_10,-10,10,3276.8,0,0},
+                                       {cb_RGneg,channel_11,-10,10,3276.8,0,0},
+                                       {cb_OG,channel_12,-10,10,3276.8,0,0},
+                                       {cb_RD,channel_13,-15,0,3276.8/1.5,1,5},
+                                       {cb_OD,channel_14,-23,0,3276.8/2.5,2,6},
+                                       {cb_BB,channel_15,0,52,3276.8/5.7,3,7},
+                                       {"\0",channel_16,0,0,3276.8,0,0},
+                                       {"\0",channel_17,0,0,3276.8,0,0}
                                     };
                                  
+//!struct DACparams const offsetParams[]= {
+//!                                       {co_0pos,channel_00,-0.2,0.2,3276.8/0.02,4,4},
+//!                                       {co_0neg,channel_01,-0.2,0.2,3276.8/0.02,4,4},
+//!                                       {co_1pos,channel_02,-0.2,0.2,3276.8/0.02,4,4},
+//!                                       {co_1neg,channel_03,-0.2,0.2,3276.8/0.02,4,4}, 
+//!                                       {co_2pos,channel_04,-0.2,0.2,3276.8/0.02,4,4},
+//!                                       {co_2neg,channel_05,-0.2,0.2,3276.8/0.02,4,4}, 
+//!                                       {co_3pos,channel_06,-0.2,0.2,3276.8/0.02,4,4},
+//!                                       {co_3neg,channel_07,-0.2,0.2,3276.8/0.02,4,4} 
+//!                                    };
 struct DACparams const offsetParams[]= {
-                                       {co_0pos,channel_00,-1,1,6553.6},
-                                       {co_0neg,channel_01,-1,1,6553.6},
-                                       {co_1pos,channel_02,-1,1,6553.6},
-                                       {co_1neg,channel_03,-1,1,6553.6}, 
-                                       {co_2pos,channel_04,-1,1,6553.6},
-                                       {co_2neg,channel_05,-1,1,6553.6}, 
-                                       {co_3pos,channel_06,-1,1,6553.6},
-                                       {co_3neg,channel_07,-1,1,6553.6} 
+                                       {co_0pos,channel_00,-200,200,65535/400,4,4}, //mV
+                                       {co_0neg,channel_01,-200,200,65535/400,4,4},
+                                       {co_1pos,channel_02,-200,200,65535/400,4,4},
+                                       {co_1neg,channel_03,-200,200,65535/400,4,4}, 
+                                       {co_2pos,channel_04,-200,200,65535/400,4,4},
+                                       {co_2neg,channel_05,-200,200,65535/400,4,4}, 
+                                       {co_3pos,channel_06,-200,200,65535/400,4,4},
+                                       {co_3neg,channel_07,-200,200,65535/400,4,4} 
                                     };
 
 // default values (these will be copied to EEprom)
-float rom biasDefRead[] =  {-5,3,5,5,-6,3,-6,5,-7.5,2,-4.5,-12,-20,30,0,0
+float rom biasDefRead[] =  {-5,3,5,5,-6,3,-6,5,-7.5,2,-4.5,-12,-20,30,0,0,
                               -5,3,5,5,-6,3,-6,5,-7.5,2,-4.5,-12,-20,30,0,0}; 
                               
-float rom biasDefExpose[] ={-5,3,5,5,-6,3,5,5,-7.5,-7.5,-4.5,5,5,45,0,0
+float rom biasDefExpose[] ={-5,3,5,5,-6,3,5,5,-7.5,-7.5,-4.5,5,5,45,0,0,
                               -5,3,5,5,-6,3,5,5,-7.5,-7.5,-4.5,5,5,45,0,0}; 
                               
-float rom biasDefWipe[] =  {-5,3,-6,-6,-6,-6,-6,5,-7.5,-7.5,-4.5,-12,-20,30,0,0
+float rom biasDefWipe[] =  {-5,3,-6,-6,-6,-6,-6,5,-7.5,-7.5,-4.5,-12,-20,30,0,0,
                               -5,3,-6,-6,-6,-6,-6,5,-7.5,-7.5,-4.5,-12,-20,30,0,0};
                               
-float rom biasDefErase[] = {6,6,6,6,6,6,6,6,6,6,6,-12,-5,0.2,0,0
-                              6,6,6,6,6,6,6,6,6,6,6,-12,-5,0.2,0,0};                              
+float rom biasDefErase[] = {6,6,6,6,6,6,6,6,6,6,6,-12,-5,0.2,0,0,
+                              6,6,6,6,6,6,6,6,6,6,6,-12,-5,0.2,0,0};  
+                              
+float rom biasDefTest[] =  {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+                              0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};   
 
 // 32 channels for DAC0 and DAC1
-float biasDef[32] = {6,6,6,6,6,6,6,6,6,6,6,-12,-5,0.2,0,0
+float biasDef[32] = {6,6,6,6,6,6,6,6,6,6,6,-12,-5,0.2,0,0,
                      6,6,6,6,6,6,6,6,6,6,6,-12,-5,0.2,0,0};
 
 
@@ -69,17 +84,29 @@ struct ADCParams const vParams[] =  {
                                        {gv_5Vneg_pa, N5Vpa, -5.5, -4.5, -2.55/4095*2.048},   
                                        {gv_12Vpos, P12V, 11, 13, 7.49/4095*2.048},    
                                        {gv_12Vneg, N12V, -13, -11, -6.19/4095*2.048},     
-                                       {gv_24Vneg, N24V, -26, -22, -12/4095*2.048},    
+                                       {gv_24Vneg, N24V, -26, -22, -12.0/4095*2.048},    
                                        {gv_54Vpos, P54V, 25, 55, 30.85/4095*2.048}
                                     };   
+typedef struct AD7689Params {float defOS; float defScaler;};
+struct AD7689Params const vParams7689[]={           // offsets and scalers for each ADC channel
+                                       {10.067,8.046*2.5/65535}, // offset & result in volts for all channels except CDS
+                                       {0,-6.49*2.5/65535}, // scaler accounts for preamp gain and ADC counts
+                                       {0,-11*2.5/65535},
+                                       {0,25.875622*2.5/65535},
+                                       {10.067*20,8.046*20*2.5/65535}, // offset & result in mV for CDS offsets
+                                       {0,-6.49*2.5/65535},
+                                       {0,-11*2.5/65535},
+                                       {0,25.875622*2.5/65535}
+                                    };
+
 
 //defines EEPROM start addresses for stored parameters                                       
-typedef enum eeAddress {erase=0,read=128,wipe=256,expose=384,offset=512,osTest1=576,osTest2=640,osTest3=704,voltage=768};
+typedef enum eeAddress {erase=0,read=128,wipe=256,expose=384,biasTest1=512,offset=640,osTest1=704,voltage=768,o7689=808,v7689=872,serADC=936,serPA0=940,serPA1=944};
 
 void savePresetValues(eeAddress preAdd)
 {
    int i;
-   if(preAdd==offset||preAdd==osTest1||preAdd==osTest2||preAdd==osTest3) 
+   if(preAdd==offset||preAdd==osTest1) 
    {
       for(i=0;i<64;i++)
       {
@@ -98,7 +125,7 @@ void savePresetValues(eeAddress preAdd)
 void loadPresetValues(eeAddress preAdd)
 {
    int i;
-   if(preAdd==offset||preAdd==osTest1||preAdd==osTest2||preAdd==osTest3)
+   if(preAdd==offset||preAdd==osTest1)
    {
       for(i=0;i<64;i++)
       {
@@ -171,24 +198,24 @@ void initializeEEProm()
       {
          write_eeprom(expose+i,ptr[i]);
       }
+      printf("iniBiasTest");
+      ptr=biasDefTest;
+      for(i=0;i<128;i++)
+      {
+         write_eeprom(biasTest1+i,ptr[i]);
+      }
       // save offset defaults
-      printf("iniBiasOffset");
+      printf("iniOffset");
       for(i=0;i<64;i++)
       {
          write_eeprom(offset+i,0);
       }
+      printf("iniOffsetTest");
       for(i=0;i<64;i++)
       {
          write_eeprom(osTest1+i,0);
       }
-      for(i=0;i<64;i++)
-      {
-         write_eeprom(osTest2+i,0);
-      }
-      for(i=0;i<64;i++)
-      {
-         write_eeprom(osTest3+i,0);
-      }
+      
       // save voltage calibration defaults
       printf("iniV-Scalers");
       float vScaler;
@@ -202,7 +229,28 @@ void initializeEEProm()
             write_eeprom((voltage+(i*4)+j),vsPtr[j]);
          }   
       }
-      write_eeprom(1023,0);
+      //
+      printf("ini7689-Offsets");
+      for(i=0;i<8;i++)
+      {
+         vScaler = vParams7689[i].defOS;
+         for(j=0;j<4;j++)
+         {
+            write_eeprom((o7689+(i*4)+j),vsPtr[j]);
+         }   
+      }
+      //
+      printf("ini7689-Scalers");
+      for(i=0;i<8;i++)
+      {
+         vScaler = vParams7689[i].defScaler;
+         for(j=0;j<4;j++)
+         {
+            write_eeprom((v7689+(i*4)+j),vsPtr[j]);
+         }   
+      }
+           
+      write_eeprom(1023,0);// clear last address... Used to show EE ini'ed
    }
 }
 
@@ -289,12 +337,64 @@ float getVscaler(int8 id)
    return result;
 }
 
+// get the offset value from EEprom
+float get7689offset(int8 id)
+{
+   int16 address = o7689 + (id*4);
+   float result=0;
+   int8* ptr=&result;
+   int8 i;
+   for(i=0;i<4;i++)
+   {
+      ptr[i]=read_eeprom(address+i);
+   }
+   return result;
+}
+
+// get the scaler value from EEprom
+float get7689scaler(int8 id)
+{
+   int16 address = v7689 + (id*4);
+   float result=0;
+   int8* ptr=&result;
+   int8 i;
+   for(i=0;i<4;i++)
+   {
+      ptr[i]=read_eeprom(address+i);
+   }
+   return result;
+}
+
 // update the scaler value in EEprom based on a true measured value
 void updateVscaler(float actualVoltage, int8 id)
 {
    float result = actualVoltage/(float)getRawData(vParams[id].channel);
    char* ptr=&result;
    int16 address = voltage + (id*4);
+   int8 i;
+   for(i=0;i<4;i++)
+   {
+      write_eeprom(address+i,ptr[i]);
+   }
+}
+
+// update the offset value in EEprom based on a true measured value
+void update7689offset(float zeroOS, int8 id)
+{
+   char* ptr=&zeroOS;
+   int16 address = o7689 + (id*4);
+   int8 i;
+   for(i=0;i<4;i++)
+   {
+      write_eeprom(address+i,ptr[i]);
+   }
+}
+
+// update the scaler value in EEprom based on a true measured value
+void update7689scaler(float scaler, int8 id)
+{
+   char* ptr=&scaler;
+   int16 address = v7689 + (id*4);
    int8 i;
    for(i=0;i<4;i++)
    {
@@ -310,3 +410,94 @@ float getVoltage(int8 id)
    return(result);
 }
 
+// calibrate the low voltage 7689 bias channel
+// calibrate the low voltage 7689 bias channel
+void cal7689LVBiasChannel()
+{
+   unsigned int8 channel=0*INx_ch1; // this coverts a int (0  to 7) to real channel ID
+   unsigned int16 data= (channel | CFG_overwrite | INCC_uniRefGND  | BW_quarter | REF_int2V5 | SEQ_disabled | RB_readDataOnly);
+   float valRef = 0;
+   float val5V = 0;
+   int i=0;
+   setDACmux(cB0, 15); // set the dac channel to an unused channel
+   
+   setVoltage(65536/2, cb0, channel_17); // OV last channel set to zero volts
+   deselectAllSPI();
+   for (i = 0;i<5;i++)
+   {
+      valRef += (float) AD7689_readData(data);
+   }
+   valRef/=5; //calculate filtered OV count
+   
+   setVoltage(65536/4*3, cb0, channel_17); // last channel set to 5V
+   deselectAllSPI();
+   for (i = 0;i<5;i++)
+   {
+      val5V += (float) AD7689_readData(data);
+   }
+   val5V/=5; // calculate filtered 5V count
+   
+   float scaler = 5/(val5V-ValRef);
+   float offset = scaler*valRef;
+   
+   update7689offset(offset, 0);
+   update7689scaler(scaler, 0);  
+}
+
+// calibrate the low voltage 7689 bias channel
+void cal7689LVCDSChannel()
+{
+   unsigned int16 channel=4;
+   channel*=INx_ch1; // this coverts a int (0  to 7) to real channel ID
+   unsigned int16 data= (channel | CFG_overwrite | INCC_uniRefGND  | BW_quarter | REF_int2V5 | SEQ_disabled | RB_readDataOnly);
+   float valRef = 0;
+   float val100mV = 0;
+   int i=0;
+   setDACmux(cdsOS, 15); // 
+   
+   setVoltage(65536/2, cdsOS, channel_17); // OV last channel set to zero volts
+   deselectAllSPI();
+   for (i = 0;i<5;i++)
+   {
+      valRef += (float) AD7689_readData(data);
+   }
+   valRef/=5; //calculate filtered OV count
+   
+   setVoltage(65536/4*3, cdsOS, channel_17); // last channel set to 5V
+   deselectAllSPI();
+   for (i = 0;i<5;i++)
+   {
+      val100mV += (float) AD7689_readData(data);
+   }
+   val100mV/=5; // calculate filtered 5V count
+   
+   float scaler = 100/(val100mV-ValRef);
+   float offset = scaler*valRef;
+   
+   update7689offset(offset, 4);
+   update7689scaler(scaler, 4);  
+}
+
+// get serial numbers form EEProm
+unsigned int32 getSerNum(int16 addr)
+{
+   unsigned int32 result = 0;
+   int8 *ptr=&result;
+   int16 i=0;
+   for(i=0;i<4;i++)
+   {
+      ptr[i] = read_eeprom (addr+i);;
+   }
+   return result;
+}
+
+// save serial numbers to EEprom
+void setSerNum(int16 addr, unsigned int32 sn)
+{
+   int8 *ptr=&sn;
+   int8 i=0;
+   for(i=0;i<4;i++)
+   {
+      write_eeprom (addr+i, ptr[i]);
+   }
+}

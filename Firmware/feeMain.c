@@ -1,6 +1,24 @@
-#define firmwareRev "PFS BEE Rev-, copyright JHU\r\n"
+#define firmwareRev "PFS BEE Rev 20150610-01, copyright JHU\r\n"
 
 #include <feeMain.h>
+
+#define USEBOOTLOADER
+#ifdef USEBOOTLOADER
+   /* ------------------------------------------------------------------------- */
+   /* map reset vector and interrupt vector                                     */
+   /* 0x000-0x3FF is used by the bootloader. The bootloader maps the original   */
+   /* reset vector (0x000) to 0x400 and the interrupt vector (0x008) to 0x408.  */
+   /* ------------------------------------------------------------------------- */
+   #build (reset=0x400, interrupt=0x408)
+   /* ------------------------------------------------------------------------- */
+   /* reserve boot block area                                                   */
+   /* This memory range is used by the bootloader, so the application must not  */
+   /* use this area.                                                            */
+   /* ------------------------------------------------------------------------- */
+   #org 0,0x3FF {}
+   //#fill_rom 0xFF
+#endif
+
 #include <string.h>
 
 #include <feeComms.c>
@@ -20,7 +38,7 @@
 #INT_EXT1
 void  EXT1_isr(void) 
 {
-   // EXT1 wakes te processor from sleep mode
+   // EXT1 wakes the processor from sleep mode
 }
 
 #INT_AD
@@ -40,7 +58,8 @@ void main()
 {
    // Initialize with all outputs off...
    output_low(EN_RS232_DRV);
-   output_low(EN_12V);        
+   output_low(EN_12V);  
+   output_low(_EN_CLKS);
    output_low(EN_5V);          
    output_low(EN_24V);
    output_low(EN_54V);
@@ -52,8 +71,12 @@ void main()
    
    initializeComms();
    initializeADC();
+   initialize7869();
+   restart_wdt();
    //delay_ms(1000);
    initializeEEProm();
+   restart_wdt();
+   printf(firmwareRev);
    //enable_interrupts(INT_EXT1);
    //enable_interrupts(INT_AD); 
    //enable_interrupts(INT_RDA); see feeComms

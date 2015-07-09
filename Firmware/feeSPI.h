@@ -119,6 +119,15 @@ float get_CCDtemperature(T_source ch)
 /* BIAS ADC ROUTINES *********************************************************/
 /*****************************************************************************/
 
+void initialize7869() // initialize with a dymmy read
+{
+   deselectAllSPI();
+   unsigned int16 data;
+   data= (CFG_overwrite | INCC_uniRefGND  | BW_quarter | REF_int2V5 | SEQ_disabled | RB_readDataOnly);
+   AD7689_readData(data);
+   return;
+}
+
 typedef enum  {vch0=INx_ch0,
                vch1=INx_ch1,
                vch2=INx_ch2,
@@ -128,44 +137,38 @@ typedef enum  {vch0=INx_ch0,
                vch6=INx_ch6,
                vch7=INx_ch7}V_source;
 
-float getBiasVoltage(V_source channel)
+float get7689Voltage(int16 channel, float scaler, float offset)
 {
+   channel*=INx_ch1; // this coverts a int (0  to 7) to real channel ID
    deselectAllSPI();
    unsigned int16 data;
-   data= (channel | CFG_overwrite | INCC_biRefCOM  | BW_full | REF_int2V5 | SEQ_disabled | RB_readDataOnly);
+   data= (channel | CFG_overwrite | INCC_uniRefGND  | BW_quarter | REF_int2V5 | SEQ_disabled | RB_readDataOnly);
    
    float result = (float) AD7689_readData(data);
-   
-   switch(channel)
-   {
-      case vch0:
-      break;
-      ////
-      case vch4:
-      break;
-      ////
-      case vch1:
-      case vch5:
-         result=result*(float)2.5;//32768;
-      break;
-      ////
-      case vch2:
-      case vch6:
-      
-      break;
-      ////
-      case vch3:
-      case vch7:
-      
-      break;      
-   }
-  
+   result *=scaler;  // scale counts to volts
+   result-=offset;   // subtract offset
    return result;
 }
 
 /*****************************************************************************/
 /* BIAS DAC ROUTINES *********************************************************/
 /*****************************************************************************/
+void setDACmux(DAC_ID id, Int16 MUXChannel)
+{
+   deselectAllSPI();
+   int8 cmd = S_monitor;
+   if(id==cb0)
+   {
+      AD5360_writeData(cmd, 0, cb1); //disable MUX
+   }
+   else if(id==cb1)
+   {
+      AD5360_writeData(cmd, 0, cb0); //disable MUX
+   }
+   deselectAllSPI();
+   int16 data = SMon_en | MUXChannel;
+   AD5360_writeData(cmd, data, id);//select MUX channel
+}
 
 void setVoltage(int16 value, DAC_ID id, DAC_channel channel)
 {
@@ -173,27 +176,34 @@ void setVoltage(int16 value, DAC_ID id, DAC_channel channel)
    int8 cmd = M_wrDACdata;
    cmd+=channel;
    AD5360_writeData(cmd, value, id);
+   delay_us(100);
    switch (id) // transfer to output
    {
       case cb0:
+         delay_us(100);
          output_low(DAC_BIAS0_LOAD);
-         delay_us(10);
+         delay_us(100);
          output_high(DAC_BIAS0_LOAD);
       break;
       
       case cb1:
+         delay_us(100);
          output_low(DAC_BIAS1_LOAD);
-         delay_us(10);
+         delay_us(100);
          output_high(DAC_BIAS1_LOAD);     
       break;
       
       case cdsOS:
+         delay_us(100);
          output_low(DAC_CDS_LOAD);
-         delay_us(10);
+         delay_us(100);
          output_high(DAC_CDS_LOAD);      
       break;
    
    }
 }
+
+
+
 
 #ENDIF

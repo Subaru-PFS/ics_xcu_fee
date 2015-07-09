@@ -15,11 +15,13 @@
 /*****************************************************************************/
 /* MENU AND SUBMENU LISTS USED BY COMMAND HANDLERS                           */
 /*****************************************************************************/
-enum mainMenu {sCB,gCB,sOS,gOS,lDAC,sDAC,sPower,gPower,sFast,gSupply,cSupply,gTemp,gRevision};
+enum mainMenu {sCB,gCB,rCB,sOS,gOS,rOS,lDAC,sDAC,sPower,gPower,sFast,gSupply,cSupply,gTemp,gRevision,gSerial,sSerial,calADC};
 char rom mainMenuItems[][8]=                   {setClockBias,
                                                 getClockBias,
+                                                rdClockBias,
                                                 setCDS_OS,
                                                 getCDS_OS,
+                                                rdCDS_0S,
                                                 loadDACPresets,
                                                 saveDACPresets,
                                                 setPowerEn,
@@ -29,9 +31,12 @@ char rom mainMenuItems[][8]=                   {setClockBias,
                                                 calSupplyVoltage,
                                                 getTemperature,
                                                 getRevision,
+                                                getSerialNumber,
+                                                setSerialNumber,
+                                                cal7689,
                                                 "\0"};
                                       
-enum biasSubMenu {Pp,Pn,DGp,DGn,Sp,Sn,SWp,SWn,RGp,RGn,OG,RD,OD,BB};                   
+enum biasSubMenu {Pp,Pn,DGp,DGn,Sp,Sn,SWp,SWn,RGp,RGn,OG,RD,OD,BB,bias_all=255};                   
 char rom biasSubMenuItems[][8]=                {cb_Ppos,
                                                 cb_Pneg,
                                                 cb_DGpos,
@@ -46,6 +51,7 @@ char rom biasSubMenuItems[][8]=                {cb_Ppos,
                                                 cb_RD,
                                                 cb_OD,
                                                 cb_BB,
+                                                cb_all
                                                 "\0"};
 
 enum biasSubSubMenu {bias0,bias1};                   
@@ -69,18 +75,18 @@ char rom offsetSubSubMenuItems[][8]=          { co_0,
                                                 co_1,
                                                 "\0"};                                         
 
-enum presetSubMenu {pErase,pRead,pExpose,pWipe,pOffset,pT1,pT2,pT3};
-char rom presetSubMenuItems[][8]=              {pb_erase,
+enum presetSubMenu {pErase,pRead,pExpose,pWipe,pBT1,pOffset,pOT1};
+char rom presetSubMenuItems[][8]=             { pb_erase,                                                
                                                 pb_read,
                                                 pb_expose,
                                                 pb_wipe,
+                                                pb_biasTest1,
                                                 pb_offset,
                                                 pb_osTest1,
-                                                pb_osTest2,
-                                                pb_osTest3,
                                                 "\0"};
-
-enum powerSubMenu {p33,p5,p12,p24,p54,pPA,pLVDS,pVbb0,pVbb1,pAll};
+                                                                                              
+                                              
+enum powerSubMenu {p33,p5,p12,p24,p54,pPA,pLVDS,pVbb0,pVbb1,pClks,pAll};
 char rom powerSubMenuItems[][8]=               {pe_3V3reg,
                                                 pe_5Vreg,
                                                 pe_12Vreg,
@@ -90,6 +96,7 @@ char rom powerSubMenuItems[][8]=               {pe_3V3reg,
                                                 pe_LVDS,
                                                 pe_Vbb0,
                                                 pe_Vbb1,
+                                                pe_Clks,
                                                 pe_all,
                                                 "\0"}; 
                                         
@@ -122,7 +129,18 @@ char rom tempSubMenuItems[][8]=                {gt_CCD0,
                                                 gt_Preamp,
                                                 gt_FEE,
                                                 "\0"}; 
+
+enum cal7SubMenu {cBias,cCDS};
+char rom cal7689SubMenuItems[][8]=             {c7_bias,
+                                                c7_CDS,
+                                                "\0"}; 
                                                 
+enum snSubMenu {snFEE,snADC,snPA0,snPA1};
+char rom snSubMenuItems[][8]=                   {sn_FEE,
+                                                sn_ADC,
+                                                sn_PA0,
+                                                sn_PA1,
+                                                "\0"};                                                
 /*****************************************************************************/
 /* CLOCK BIAS COMMAND HANDLERS                                               */
 /*****************************************************************************/
@@ -165,8 +183,70 @@ void exeSetClockBias()
 
 void exeGetClockBias()
 {
-   int8 menuIndex = getMenuIndex(rxBuff[pCmd].Param[1],biasSubMenuItems);
-   printf(tbd);
+   //int8 chID;
+   int8 dacID = getMenuIndex(rxBuff[pCmd].Param[2],biasSubSubMenuItems);
+   if (dacID <=1)
+   {
+      int8 chIndex=getBiasRecordIndex(rxBuff[pCmd].Param[1]);
+      if (chIndex<16)
+      {
+         printf("%f\n",biasDef[chIndex+(dacID*16)]);
+      }
+      else
+      {
+         printf(badChannel);
+      }
+   }   
+   else
+   {
+      printf(badChannel);
+   }
+}
+void exeRdClockBias()
+{
+   int8 dacID = getMenuIndex(rxBuff[pCmd].Param[2],biasSubSubMenuItems);
+   if (dacID <=1)
+   {
+      int8 chIndex=getBiasRecordIndex(rxBuff[pCmd].Param[1]);
+      if (chIndex<16)
+      {
+         int ADCchID = biasParams[chindex].ADCCh0;
+         if (dacID==1) ADCchID = biasParams[chindex].ADCCh1;
+         float offset = get7689Offset(ADCChID);
+         float scaler = get7689Scaler(ADCChID);
+         
+         // first configure the DAC MUX
+         setDACmux(dacID, (int16)chIndex);
+         // then read the ADC voltage
+         float result = get7689Voltage(ADCchID, scaler, offset);
+         printf("%f\n",result);
+      }
+      else if (chIndex==bias_all)
+      {
+         for(int i=0; i<14; i++)
+         {
+            int ADCchID = biasParams[i].ADCCh0;
+            if (dacID==1) ADCchID = biasParams[i].ADCCh1;
+            float offset = get7689Offset(ADCChID);
+            float scaler = get7689Scaler(ADCChID);
+            
+            // first configure the DAC MUX
+            setDACmux(dacID, (int16)i);
+            // then read the ADC voltage
+            float result = get7689Voltage(ADCchID, scaler, offset);
+            printf("%f ",result);
+         }
+         printf("\n");
+      }
+      else
+      {
+         printf(badChannel);
+      }
+   }
+   else
+   {
+      printf(badChannel);
+   }
 }
 
 /*****************************************************************************/
@@ -213,10 +293,51 @@ void exeSetOffset()
 
 void exeGetOffset()
 {
-   int8 menuIndex = getMenuIndex(rxBuff[pCmd].Param[1],offsetSubMenuItems);
-   printf(tbd);
+   int8 chID;
+   int8 bankID = getMenuIndex(rxBuff[pCmd].Param[2],offsetSubSubMenuItems);
+   if (bankID <=1)
+   {
+      int8 chIndex=getOSRecordIndex(rxBuff[pCmd].Param[1]);
+      if (chIndex<8)
+      {
+         printf("%f\n",offsetDef[chIndex+(bankID*8)]);   
+      }
+      else
+      {
+         printf(badChannel);
+      }
+   }   
+   else
+   {
+      printf(badChannel);
+   }       
 }
 
+void exeRdOffset()
+{
+   int8 bankID = getMenuIndex(rxBuff[pCmd].Param[2],offsetSubSubMenuItems);
+   if (bankID <=1)
+   {
+      int8 chIndex=getOSRecordIndex(rxBuff[pCmd].Param[1]);
+      if (chIndex<8)
+      {
+         int ADCchID = offsetParams[chindex].ADCCh0;
+         float offset = get7689Offset(ADCChID);
+         float scaler = get7689Scaler(ADCChID);
+         
+         // first configure the DAC MUX
+         chIndex+=(bankId*8);
+         setDACmux(cdsOS, (int16)chIndex);
+         // then read the ADC voltage
+         float result = get7689Voltage(ADCchID, scaler, offset);
+         printf("%f\n",result);
+      }
+      else if (chIndex ==8) // read all
+      {
+         
+      }
+   }
+}
 /*****************************************************************************/
 /* DAC PRESET COMMAND HANDLERS                                               */
 /*****************************************************************************/
@@ -237,16 +358,13 @@ void exeLoadDAC()
       case pWipe:
          loadPresetValues(wipe);
          break;
+      case pBT1:
+         loadPresetValues(biasTest1);
+         break;
       case pOffset:
          loadPresetValues(offset);
          break;
-      case pT1:
-         loadPresetValues(osTest1);
-         break;
-      case pT2:
-         loadPresetValues(osTest1);
-         break;
-      case pT3:
+      case pOT1:
          loadPresetValues(osTest1);
          break;
       default:
@@ -279,20 +397,16 @@ void exeSaveDAC()
          savePresetValues(wipe);
          printf(success);
          break;
+      case pBT1:
+         savePresetValues(biasTest1);
+         printf(success);
+         break;   
       case pOffset:
          savePresetValues(offset);
          printf(success);
          break;
-      case pT1:
+      case pOT1:
          savePresetValues(osTest1);
-         printf(success);
-         break;
-      case pT2:
-         savePresetValues(osTest2);
-         printf(success);
-         break;
-      case pT3:
-         savePresetValues(osTest3);
          printf(success);
          break;   
       default:
@@ -318,12 +432,14 @@ void exeSetPower()
             break;
          case p5:
             output_low(EN_5V);
+            initialize7869();
             break;
          case p12:
             output_low(EN_12V);
             break;
          case p24:
             output_low(EN_24V);
+            output_low(_EN_Clks);
             break;
          case p54:
             output_low(EN_54V);
@@ -338,7 +454,10 @@ void exeSetPower()
             output_low(EN_54V_AMP0);
             break;
          case pVbb1:
-            output_low(EN_54V_AMP0);
+            output_low(EN_54V_AMP1);
+            break;
+         case pClks:           
+            output_high(_EN_CLKS);
             break;
          case pAll:
             output_low(EN_P3V3);
@@ -347,9 +466,11 @@ void exeSetPower()
             output_low(EN_LVDS);
             output_low(EN_12V);
             output_low(EN_24V);
+            output_low(_EN_CLKS); // don't drive enable line after power removed
             output_low(EN_54V);
             output_low(EN_54V_AMP0);
             output_low(EN_54V_AMP1);
+            initialize7869();
             break;
          default:
             printf(badParam);
@@ -371,6 +492,7 @@ void exeSetPower()
             output_high(EN_12V);
             break;
          case p24:
+            output_high(_EN_CLKS);
             output_high(EN_24V);
             break;
          case p54:
@@ -387,6 +509,12 @@ void exeSetPower()
             break;
          case pVbb1:
             output_high(EN_54V_AMP1);
+            break;
+          case pClks:
+            if(EN_24V)
+            {
+               output_low(_EN_CLKS);
+            }
             break;
          case pAll:
             output_high(EN_P3V3);
@@ -448,7 +576,7 @@ void exeGetSupplyVoltage()
    int8 chIndex=getVoltageRecordIndex(rxBuff[pCmd].Param[1]);
    if (chIndex<10)
    {
-      printf("%f\r\n",getVoltage(chIndex));
+      printf("%f\n",getVoltage(chIndex));
    }
    else
    {
@@ -488,16 +616,16 @@ void exeGetTemperature()
    switch(menuIndex)
    {
       case tCCD0:
-         printf("%f\r\n",get_CCDtemperature(ch0));
+         printf("%f\n",get_CCDtemperature(ch0));
          break;
       case tCCD1:
-         printf("%f\r\n",get_CCDtemperature(ch1));
+         printf("%f\n",get_CCDtemperature(ch1));
          break;
       case tFEE:
-         printf(tbd);
+         printf(tbd); // need to get ffe temp from the 7689
          break;
       case tPA:
-         printf(tbd);
+         printf(tbd); 
          break;
       default:
          printf(badParam);
@@ -506,22 +634,108 @@ void exeGetTemperature()
 }
 
 /*****************************************************************************/
+/* CAL 7689 COMMAND HANDLER                                                  */
+/*****************************************************************************/
+
+void exeCal7689()
+{
+   int8 menuIndex = getMenuIndex(rxBuff[pCmd].Param[1],cal7689SubMenuItems);
+   switch(menuIndex)
+   {
+      case cBias:
+         cal7689LVBiasChannel();
+         printf(success);
+         break;
+      case cCDS:
+         cal7689LVCDSChannel();
+         printf(success);
+         break;
+      default:
+         printf(badParam);
+         break;
+   }
+}
+
+/*****************************************************************************/
+/* GET SERIAL NUMBER                                                         */
+/*****************************************************************************/
+
+void exeGetSerial()
+{
+   int32 serial = 0;
+   int8 menuIndex = getMenuIndex(rxBuff[pCmd].Param[1],snSubMenuItems);
+   switch(menuIndex)
+   {
+      case snFEE:
+         int32 *ptr = &serial;
+         read_program_memory(0x2c, ptr, 4);
+         printf("%Lu\n",serial);
+         break;
+      case snADC:
+         serial = getSerNum(serADC);
+         printf("%Lu\n",serial);
+         break;
+      case snPA0:
+         serial = getSerNum(serPA0);
+         printf("%Lu\n",serial);
+         break;
+      case snPA1:
+         serial = getSerNum(serPA1);
+         printf("%Lu\n",serial);
+         break;
+      default:
+         printf(badParam);
+         break;
+   }
+}
+
+/*****************************************************************************/
+/* SET SERIAL NUMBER                                                         */
+/*****************************************************************************/
+
+void exeSetSerial()
+{
+   int8 menuIndex = getMenuIndex(rxBuff[pCmd].Param[1],snSubMenuItems);
+   unsigned int32 serial=atoi32(rxBuff[pCmd].Param[2]);
+   switch(menuIndex)
+   {
+      case snADC:
+         setSerNum(serADC, serial);
+         printf(success);
+         break;
+      case snPA0:
+         setSerNum(serPA0, serial);
+         printf(success);
+         break;
+      case snPA1:
+         setSerNum(serPA1, serial);
+         printf(success);
+         break;
+      default:
+         printf(badParam);
+         break;
+   }
+}
+
+
+/*****************************************************************************/
 /* MAIN COMMAND HANDLER                                                      */
 /*****************************************************************************/
 
 void executeCmd()
 {
-   if (rxBuff[pCmd].Status!=cmdReady) // only execute if cmd is ready
+   if (rxBuff[pCmd].Status==recOverrun)
    {
-      pCmd+=1;
-      if (pCmd>=numRec)
-      {
-         pCmd=0;
-      }
+      #IFDEF USE_LED
+      output_high(LED);
+      #ENDIF
+      output_high(EN_RS232_DRV);// enable driver for response
+      printf(overrun);
+      rxBuff[pCmd].Status=recEmpty;
    }
-   else
+   else if (rxBuff[pCmd].Status==cmdReady)
    {
-      rxBuff[pCmd].Status=0;
+      
       #IFDEF USE_LED
       output_high(LED);
       #ENDIF
@@ -538,12 +752,18 @@ void executeCmd()
          case gCB: // getClockBias
             exeGetClockBias();
             break;      
+         case rCB: // read the actual clock bias via ADC
+            exeRdClockBias();
+            break;
          case sOS: // setOffset
             exeSetOffset();
             break;        
          case gOS: // getOffset
             exeGetOffset();
-            break;        
+            break;      
+         case rOS: // read the actual offset voltage via ADC
+            exeRdOffset();
+            break;
          case lDac: // load DAC with presets
             exeLoadDAC();
             break;        
@@ -571,13 +791,36 @@ void executeCmd()
          case gRevision: // get firmware Revision
             printf(firmwareRev);
             break;
+         case gSerial: // get serial numbers
+            exeGetSerial(); 
+//!            int32 serial = 0;
+//!            int32 *ptr = &serial;
+//!            read_program_memory(0x2c, ptr, 4);
+//!            printf("%Lu\n",serial);
+           break;
+         case sSerial: // set serial numbers
+            exeSetSerial();
+            break;
+         case calADC: // calibrate the 7869 ADC's
+            exeCal7689();
+            break;
          default:
             printf(badCmd);
-            break;   
-      }   
-   }  
+            break; 
+      }
+      rxBuff[pCmd].Status=recEmpty;
+   }    
+   else if (pCmd!=pRec) // get next record but never move ahead of rx buffer
+   {
+      pCmd+=1;
+      if (pCmd>=numRec)
+      {
+         pCmd=0;
+      }
+   } 
    delay_ms(100);
    //output_low(EN_RS232_DRV); // disable driver
    output_low(LED);
 }
+
 #ENDIF

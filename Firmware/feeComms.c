@@ -51,7 +51,7 @@ void rda_isr()
       switch (rxData)
       {
          case startCharacter:     
-            if (rxBuff[pRec].Status!=recFull)
+            if (rxBuff[pRec].Status!=recFull | rxbuff[pRec].Status!=recOverrun)
             {
                rxBuff[pRec].Status=recActive; // activate record  
                
@@ -75,10 +75,19 @@ void rda_isr()
                   pParam+=1;  // increment the param pointer
                   pChar=0;    // reset the character pointer
                }
-               else 
+               else
                {
-                  rxBuff[pRec].Status=recEmpty;
+                  rxBuff[pRec].Status=recOverrun; // buffer overrun
+                  pRec+=1; // point to next record in buffer
+                  if (pRec>=numRec)
+                  {
+                     pRec=0;
+                  } 
                }
+//!               else 
+//!               {
+//!                  rxBuff[pRec].Status=recEmpty;
+//!               }
             }  
          break;   
          
@@ -108,7 +117,12 @@ void rda_isr()
                }
                else
                {
-                  rxBuff[pRec].Status=recEmpty; // buffer overrun
+                  rxBuff[pRec].Status=recOverrun; // buffer overrun
+                  pRec+=1; // point to next record in buffer
+                  if (pRec>=numRec)
+                  {
+                     pRec=0;
+                  } 
                }
             }   
          break;

@@ -1,4 +1,4 @@
-#use RS232(baud=9600,parity=N,xmit=TXD,rcv=RXD,bits=8,stream=PORT1,restart_wdt)
+#use RS232(baud=38400,parity=N,xmit=TXD,rcv=RXD,bits=8,stream=PORT1,restart_wdt)
 
 #define USE_LED
 #define USE_ECHO
@@ -7,7 +7,7 @@
 
 #define numRec 4
 #define numParam 4
-#define lenParam 8
+#define lenParam 10
 
 typedef struct rx_record
 {

@@ -27,7 +27,7 @@
 const float scaler[17]={-12,    //Negative 24V scale factor
                         30.85,    // Positive 54V scale factor
                         2.55,
-                        3.48
+                        3.48,
                         0,
                         1.681,
                         -6.19,
@@ -61,7 +61,7 @@ typedef enum  {N24V=0,
 int16 getRawData(ADC_channel id)
 {
    set_adc_channel(id);
-   delay_us(10); // allow time for channel change
+   delay_us(20); // allow time for channel change
    return(read_adc());
 }
 

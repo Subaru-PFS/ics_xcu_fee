@@ -7,16 +7,16 @@
 //#device ICD=TRUE
 
 //#FUSES WDT                      //Watch Dog Timer
-//#FUSES WDT64                    //Watch Dog Timer uses 1:64 Postscale
+#FUSES WDT64                    //Watch Dog Timer uses 1:64 Postscale
 #FUSES NOXINST                  //Extended set extension and Indexed Addressing mode disabled (Legacy mode)
-#FUSES NOBROWNOUT               //No brownout reset
+//#FUSES NOBROWNOUT               //No brownout reset
 
 #use delay(internal=32000000,restart_wdt)
 #use FIXED_IO( A_outputs=PIN_A7,PIN_A6,PIN_A5,PIN_A4 )
 #use FIXED_IO( C_outputs=PIN_C6,PIN_C5,PIN_C3,PIN_C2,PIN_C0 )
 #use FIXED_IO( D_outputs=PIN_D7,PIN_D6,PIN_D5,PIN_D4,PIN_D3,PIN_D2,PIN_D1,PIN_D0 )
 #use FIXED_IO( E_outputs=PIN_E7,PIN_E6,PIN_E5,PIN_E4,PIN_E3,PIN_E2,PIN_E1,PIN_E0 )
-#use FIXED_IO( G_outputs=PIN_G3,PIN_G2,PIN_G1 )
+#use FIXED_IO( G_outputs=PIN_G3,PIN_G2,PIN_G1,PIN_G0)
 #define MON_N24V        PIN_A0
 #define MON_P54V        PIN_A1
 #define MON_N5Vpa       PIN_A2
@@ -36,9 +36,9 @@
 #define EN_RS232_DRV    PIN_C0
 #define _DAC_PARITY_ERR PIN_C1
 #define _DAC_RST        PIN_C2
-#define SCK1            PIN_C3
+#define SD01            PIN_C3
 #define SDI1            PIN_C4
-#define SDO1            PIN_C5
+#define SCK1            PIN_C5
 #define TXD             PIN_C6
 #define RXD             PIN_C7
 #define ADC_TEMP_START  PIN_D0
@@ -66,7 +66,6 @@
 #define MON_P3V3        PIN_F7
 #define ADC_BIAS_CNV    PIN_G0
 #define FAST            PIN_G1
-#define TP_9            PIN_G2
 #define _EN_CLKS        PIN_G3
 #define MON_P3V3_MICRO  PIN_G4
 
