@@ -5,9 +5,11 @@
 //#define AD7689_USE_SPI2
 
 #IFDEF AD7689_USE_SPI2
-   #USE SPI(MASTER, FORCE_HW, MODE=1, BAUD=100000, ENABLE=AD7689_CNV, CLK=PIN_D6, DI=PIN_D5, DO=PIN_D4, SPI2, BITS=16, stream=AD7689_STREAM)
-#ELSE   
-   #USE SPI(MASTER, FORCE_HW, MODE=1, BAUD=100000, ENABLE=AD7689_CNV,CLK=PIN_C3, DI=PIN_C4, DO=PIN_C5, SPI1, BITS=16, stream=AD7689_STREAM)
+   //#USE SPI(MASTER, FORCE_HW, MODE=1, BAUD=100000, ENABLE=AD7689_CNV, CLK=PIN_D6, DI=PIN_D5, DO=PIN_D4, SPI2, BITS=16, stream=AD7689_STREAM)
+   #USE SPI(MASTER, FORCE_HW, MODE=0, ENABLE=AD7689_CNV, CLK=PIN_D6, DI=PIN_D5, DO=PIN_D4, SPI2, BITS=16, stream=AD7689_STREAM)
+#ELSE
+   //#USE SPI(MASTER, FORCE_HW, MODE=1, BAUD=100000, ENABLE=AD7689_CNV,CLK=PIN_C3, DI=PIN_C4, DO=PIN_C5, SPI1, BITS=16, stream=AD7689_STREAM)
+   #USE SPI(MASTER, FORCE_HW, MODE=0,  ENABLE=AD7689_CNV, CLK=PIN_C3, DI=PIN_C4, DO=PIN_C5, SPI1, BITS=16, stream=AD7689_STREAM)
 #ENDIF
 // CONFIGURATION REGISTOR = INCC | INX | BW | REF .... etc.
 // Note: 2 dummy conversions are required to update the configuration
@@ -63,11 +65,13 @@ unsigned int16 AD7689_readData(int16 config)
    }rData;
 
    spi_xfer(AD7689_STREAM,config);
-   delay_us(15);
+   delay_us(10);
    spi_xfer(AD7689_STREAM,config);
-   delay_us(15);
-   spi_xfer(AD7689_STREAM,config);
-   delay_us(15);
+   delay_us(10);
+//!   spi_xfer(AD7689_STREAM,config);
+//!   delay_us(20);
+//!   spi_xfer(AD7689_STREAM,config);
+//!   delay_us(1000);
    rData.response=spi_xfer(AD7689_STREAM,config);
    return rData.response;
 }
