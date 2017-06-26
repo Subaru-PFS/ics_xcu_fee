@@ -199,25 +199,25 @@ void initializeEEProm()
       rom char* ptr;
       int i;
       //save bias defaults
-      printf("iniBiasErase");
+      printf("iniBiasErase\n");
       ptr = biasDefErase;
       for(i=0;i<128;i++)
       {
          write_eeprom(erase+i,ptr[i]);
       }
-      printf("iniBiasRead");
+      printf("iniBiasRead\n");
       ptr=biasDefRead;
       for(i=0;i<128;i++)
       {
          write_eeprom(read+i,ptr[i]);
       }
-      printf("iniBiasWipe");
+      printf("iniBiasWipe\n");
       ptr=biasDefWipe;
       for(i=0;i<128;i++)
       {
          write_eeprom(wipe+i,ptr[i]);
       }
-      printf("iniBiasExpose");
+      printf("iniBiasExpose\n");
       ptr=biasDefExpose;
       for(i=0;i<128;i++)
       {
@@ -229,20 +229,20 @@ void initializeEEProm()
 //!      {
 //!         write_eeprom(biasTest1+i,ptr[i]);
 //!      }
-      printf("iniBiasIdle");
+      printf("iniBiasIdle\n");
       ptr=biasDefIdle;
       for(i=0;i<128;i++)
       {
          write_eeprom(idle+i,ptr[i]);
       }
-      printf("iniBiasFastRev");
+      printf("iniBiasFastRev\n");
       ptr=biasDefFastRev;
       for(i=0;i<128;i++)
       {
          write_eeprom(fastRev+i,ptr[i]);
       }
       // save offset defaults
-      printf("iniOffset");
+      printf("iniOffset\n");
       for(i=0;i<64;i++)
       {
          write_eeprom(offset+i,0);
@@ -254,7 +254,7 @@ void initializeEEProm()
 //!      }
       
       // save voltage calibration defaults
-      printf("iniV-Scalers");
+      printf("iniV-Scalers\n");
       float vScaler;
       char* vsPtr=&vScaler;
       int j;
@@ -267,7 +267,7 @@ void initializeEEProm()
          }   
       }
       //
-      printf("ini7689-Offsets");
+      printf("ini7689-Offsets\n");
       
       for(i=0;i<8;i++)
       {
@@ -278,7 +278,7 @@ void initializeEEProm()
          }   
       }
       //
-      printf("ini7689-Scalers");
+      printf("ini7689-Scalers\n");
       for(i=0;i<8;i++)
       {
          vScaler = vParams7689[i].defScaler;
@@ -287,9 +287,14 @@ void initializeEEProm()
             write_eeprom((v7689+(i*4)+j),vsPtr[j]);
          }   
       }
-           
+      printf("iniSerialNums\n");
+      write_eeprom(serPA0,0);
+      write_eeprom(serCCD0,'\0');
+      write_eeprom(serCCD1,'\0');        
+          
       write_eeprom(eeIniAdd,eeHasBeenInitialized);// set last address... Used to show EE ini'ed
    }
+   
 }
 
 int8 getBiasRecordIndex(char*Param)
