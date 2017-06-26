@@ -503,6 +503,9 @@ void cal7689LVBiasChannel()
    
    update7689offset(offset, 0);
    update7689scaler(scaler, 0);  
+   
+   // reset offets to last loaded CDS values
+  
 }
 
 // calibrate the low voltage 7689 bias channel
@@ -537,6 +540,22 @@ void cal7689LVCDSChannel()
    
    update7689offset(offset, 4);
    update7689scaler(scaler, 4);  
+   
+   
+   // reload the offset values
+   for(i=0;i<8;i++)
+   { 
+      int chID = offsetParams[i].channel;
+      unsigned int16 value = 32768 + (int16) (offsetParams[i].scaler*offsetDef[i]);
+      setVoltage(value, cdsOS, chID);
+   }
+   for(i=0;i<8;i++)
+   { 
+      int chID = offsetParams[i].channel;
+      unsigned int16 value = 32768 +  (int16) (offsetParams[i].scaler*offsetDef[i+8]);
+      setVoltage(value, cdsOS, chID+8);
+   }
+
 }
 
 // get serial numbers form EEProm
