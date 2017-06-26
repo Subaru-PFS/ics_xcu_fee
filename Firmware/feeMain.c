@@ -1,6 +1,12 @@
-#define firmwareRev "PFS BEE Rev 20150610-01, copyright JHU\r\n"
+#define firmwareRev "PFS FEE Rev 20170613-01, copyright JHU\r\n"
+#define eeHasBeenInitialized 0x00   // if there is a change in eeProm 
+#define  eeHasNotBeenInitialized 0xFF   /* if there is a change in eeProm 
+data locations and the EEProm must be re written then this chr must be changed.
+Note, never us 0xFF!...*/
 
 #include <feeMain.h>
+
+#define DISABLE_3V3_POWER_CYCLE
 
 #define USEBOOTLOADER
 #ifdef USEBOOTLOADER
@@ -56,22 +62,29 @@ void  AD_isr(void)
 
 void main()
 {
+   setup_wdt(WDT_ON);
    // Initialize with all outputs off...
    output_low(EN_RS232_DRV);
    output_low(EN_12V);  
-   output_low(_EN_CLKS);
+   output_high(_EN_CLKS);
    output_low(EN_5V);          
    output_low(EN_24V);
    output_low(EN_54V);
+   output_low(EN_54V_AMP0);  
+   output_low(EN_54V_AMP1); 
+   output_low(EN_LVDS);
    output_low(EN_PA); 
    output_low(EN_P3V3);
    output_low(_DAC_RST); // reset all DACs / ADC
    output_high(_DAC_RST);
    output_low(FAST);
-   
+#ifdef DISABLE_3V3_POWER_CYCLE
+   output_high(EN_P3V3);
+   initialize7869();
+#endif   
    initializeComms();
    initializeADC();
-   initialize7869();
+   //initialize7869();
    restart_wdt();
    //delay_ms(1000);
    initializeEEProm();

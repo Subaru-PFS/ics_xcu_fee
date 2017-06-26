@@ -72,7 +72,7 @@
 //#use RS232(baud=9600,parity=N,xmit=TXD,rcv=RXD,bits=8,stream=PORT1,restart_wdt)
 
 #define DELAY 1000
-
+#use timer(TICK=1s,BITS=32,ISR)
 
 /*****************************************************************************/
 /* MACRO DEFINITIONS *********************************************************/

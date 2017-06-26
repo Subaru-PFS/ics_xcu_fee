@@ -37,6 +37,7 @@ void initializeComms()
 #INT_RDA
 void rda_isr()
 {
+   static boolean echo = TRUE;
    #IFDEF USE_LED
    output_high(LED);
    #ENDIF
@@ -44,13 +45,20 @@ void rda_isr()
    { 
       output_high(EN_RS232_DRV);
       char rxData = fgetc(PORT1);
-      #IFDEF USE_ECHO
-         fputc(rxData,PORT1);
-      #ENDIF
+      
       //output_low(EN_RS232_DRV);
       switch (rxData)
       {
-         case startCharacter:     
+         case startCharacterNoEcho:
+         case startCharacter:   
+            if (rxData == startCharacterNoEcho)
+            {
+               echo = FALSE;
+            }
+            else
+            {
+               echo = TRUE;
+            }                
             if (rxBuff[pRec].Status!=recFull | rxbuff[pRec].Status!=recOverrun)
             {
                rxBuff[pRec].Status=recActive; // activate record  
@@ -104,8 +112,9 @@ void rda_isr()
             }
          break;     
           
-         //case spaceCharacter:// do nothing for spaces
-         //break;
+         case ignoreChr0:// do nothing for spaces and CR
+         case ignoreChr1:
+         break;
          
          default:
             if(rxBuff[pRec].Status==recActive)
@@ -127,6 +136,12 @@ void rda_isr()
             }   
          break;
       }
+      #IFDEF USE_ECHO
+         if(echo==TRUE) 
+         {
+            fputc(rxData,PORT1);
+         }   
+      #ENDIF
    }
    output_low(LED);
    //output_low(EN_RS232_DRV);
