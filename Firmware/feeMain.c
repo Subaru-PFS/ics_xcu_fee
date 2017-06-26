@@ -1,4 +1,4 @@
-#define firmwareRev "PFS FEE Rev 20170613-01, copyright JHU\r\n"
+#define firmwareRev "PFS FEE Rev 20170613-02, copyright JHU\r\n"
 #define eeHasBeenInitialized 0x00   // if there is a change in eeProm 
 #define  eeHasNotBeenInitialized 0xFF   /* if there is a change in eeProm 
 data locations and the EEProm must be re written then this chr must be changed.
