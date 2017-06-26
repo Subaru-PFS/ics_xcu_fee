@@ -1,6 +1,9 @@
 #define startCharacter '~'
+#define startCharacterNoEcho '@'
 #define endCharacter '\n'
 #define delimiterCharacter ','
+#define ignoreChr0   '\r'
+#define ignoreChr1   ' '
 
 #define recEmpty 0
 #define recActive 1
@@ -8,6 +11,7 @@
 #define recOverrun 2
 #define cmdReady recFull
 
+#define allRecords 254
 #define noRecordFound 255
 
 
@@ -32,6 +36,9 @@ set default biasses for channel 0
    #define sn_ADC       "ADC"    // ACC, PA0, PA1 can be written
    #define sn_PA0       "PA0"
    #define sn_PA1       "PA1"
+   #define sn_CCD0      "CCD0"
+   #define sn_CCD1      "CCD1"
+   #define sn_all       "all"
 
 // Set/get the clock Bias Voltages
 #define setClockBias "sb" // COMMAND
@@ -52,9 +59,11 @@ set default biasses for channel 0
    #define cb_OD        "OD"
    #define cb_BB        "BB"
    #define cb_all       "all"
+   #define cb_all_off   "all_off"
       #define cb_0         "ch0" // PARAMETER 2
       #define cb_1         "ch1"
-   
+
+
 // Set/Get the CDS offset voltages
 #define setCDS_OS    "so" //
 #define getCDS_OS    "go" 
@@ -78,9 +87,11 @@ set default biasses for channel 0
    #define pb_read         "read"
    #define pb_expose       "expose"
    #define pb_wipe         "wipe"
-   #define pb_biasTest1    "BT1"
+   #define pb_idle         "idle"
+   #define pb_fastRev      "fastRev"
    #define pb_offset       "offset"
-   #define pb_osTest1      "0T1"
+   
+#define getLastBiasMode "gp"   
   
 // Enable the power supplies   
 #define setPowerEn   "se" // must include 0 or 1 for off or on
@@ -101,11 +112,12 @@ set default biasses for channel 0
 
 // Set Fast Operation
 #define setFast      "sf"
+#define getFast      "gf"
    #define sf_fast      "fast"
    #define sf_slow      "slow"
     
 // Read supply voltages
-#define calSupplyVoltage  "cv"
+#define calSupplyVoltage  "cv" // example: ~cv,3V3M,3.315
 #define getSupplyVoltage  "rv"
    #define gv_3V3Micro     "3V3M"
    #define gv_3V3Other     "3V3"
@@ -120,17 +132,26 @@ set default biasses for channel 0
    #define gv_all          "all"
    
 // Read temperature
-#define getTemperature "gt"
+#define getTemperature "rt"
    #define gt_CCD0      "ccd0"
    #define gt_CCD1      "ccd1"
    #define gt_Preamp    "PA"
    #define gt_FEE       "FEE"
+   #define gt_all       "all"
    
 // Calibrate 7689
 #define cal7689         "cal"
    #define c7_bias      "bias"
    #define c7_CDS       "CDS"
 
+#define getIniByte      "gI" // this is set to 0xFF if Eeprom unititialized
+#define setIniByte      "sI" // set to 0x00 with default initialation...
+                             // sI byte can be written - it is non volitile 
+#define getRunState   "gRS" // runState is volatile, and is reset on boot to null
+#define setRunState   "sRS" // can be written. RS is an 8 character string.
+
+#define getStatus       "gStat"
+#define sysReset        "reboot"
 /*****************************************************************************/
 /* RESPONSE MESSAGES                                                            */
 /*****************************************************************************/
@@ -142,6 +163,11 @@ set default biasses for channel 0
 #define overrun         "BUFFER OVERRUN\n"
 #define success         "SUCCESS\n"
 #define tbd             "NOT IMPLEMENTED YET\n"
+#define unknown         "unknown\n"
+#define functionDisabled "Function Disabled\n"
+#define clkErr "Error: 24V must be enabled before clocks\n"
+#define LVDSErr "Error: 12V must be enabled before LVDS\n"
+#define badRS "INVALID RUN STATE"
                                              
                                                                                 
 

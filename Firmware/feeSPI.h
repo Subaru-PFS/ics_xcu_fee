@@ -13,18 +13,24 @@
 //#use spi(MASTER, FORCE_HW, SPI1, stream=SPI_STREAM)
 
 // CCD TEMPERATURE conversion to kelvin from counts (24bit full scale)
-// k = 2E-13x^2 + 3E-05x + 143.31   (R^2=1)
-#define CCD_a0 143.31
-#define CCD_a1 3e-05F
-#define CCD_a2 2e-13F
+// k = 7.713727E-21x^3 + 2.623405E-14x^2 + 2.922075E-5x + 2.133670
+// R^2=1.0000
+
+// coefficients for a 1K RTD with 499 series resistor on lower leg.
+#define CCD_a0 1.443696e2F
+#define CCD_a1 5.982131e-5F
+#define CCD_a2 8.756980e-13F
+#define CCD_a3 -9.750461E-20F
+#define CCD_a4 4.414512E-27F
+#define CCD_a5 2.448069E-33F
 
 /*****************************************************************************/
 /* HELPER ROUTINES ***********************************************************/
 /*****************************************************************************/
  
- float poly(float x, float a0, float a1, float a2, float a3=0, float a4=0)
+ float poly(float x, float a0, float a1, float a2, float a3, float a4=0, float a5=0)
  {
-   return((a4*pow(x,4))+(a3*pow(x,3))+(a2*pow(x,2))+(a1*x)+a0);
+   return((a5*pow(x,5))+(a4*pow(x,4))+(a3*pow(x,3))+(a2*pow(x,2))+(a1*x)+ a0);
  }
 
 /*****************************************************************************/
@@ -43,6 +49,7 @@ void deselectAllSPI()
    output_low(DAC_CDS_LOAD);
    output_high(_DAC_CDS_CS);
    output_high(ADC_BIAS_CNV);
+   delay_ms(1);
 }
 
 /*****************************************************************************/
@@ -105,29 +112,22 @@ float get_CCDtemperature(T_source ch)
    output_high(ADC_TEMP_START);   // start conversion
    
    delay_ms(250); // allow time for the conversion to complete
-   
-   float x = (float)ADS1247_readData(); // counts in float form
-   
+   float tempData =0;
+   for (int i=0;i<10;i++)
+   {
+      tempData += (float)ADS1247_readData(); // counts in float form
+   }   
+   tempdata/=10;
    data=(IDAC0_D_Out | IDAC0_MAG_OFF); // disable current source 
    ADS1247_writeReg(data, ra_IDAC0);
    output_low(ADC_TEMP_START); // put device to sleep   
    
-   return (poly(x, CCD_a0, CCD_a1, CCD_a2)); // result in Kelvin
+   return (poly(tempData, CCD_a0, CCD_a1, CCD_a2, CCD_a3, CCD_a4, CCD_a5)); // result in Kelvin
 }
 
 /*****************************************************************************/
 /* BIAS ADC ROUTINES *********************************************************/
 /*****************************************************************************/
-
-void initialize7869() // initialize with a dymmy read
-{
-   deselectAllSPI();
-   unsigned int16 data;
-   data= (CFG_overwrite | INCC_uniRefGND  | BW_quarter | REF_int2V5 | SEQ_disabled | RB_readDataOnly);
-   AD7689_readData(data);
-   return;
-}
-
 typedef enum  {vch0=INx_ch0,
                vch1=INx_ch1,
                vch2=INx_ch2,
@@ -141,14 +141,30 @@ float get7689Voltage(int16 channel, float scaler, float offset)
 {
    channel*=INx_ch1; // this coverts a int (0  to 7) to real channel ID
    deselectAllSPI();
+   delay_us(10);
    unsigned int16 data;
    data= (channel | CFG_overwrite | INCC_uniRefGND  | BW_quarter | REF_int2V5 | SEQ_disabled | RB_readDataOnly);
-   
    float result = (float) AD7689_readData(data);
    result *=scaler;  // scale counts to volts
    result-=offset;   // subtract offset
    return result;
 }
+
+void initialize7869() // initialize with a dymmy read
+{
+   deselectAllSPI();
+   delay_ms(100);
+   unsigned int16 data;
+   data= (CFG_overwrite | INCC_uniRefGND  | BW_quarter | REF_int2V5 | SEQ_disabled | RB_readDataOnly);
+   for (int i=0;i<5;i++)
+   {
+      get7689Voltage(0, 1, 0);
+      //AD7689_readData(data);
+   }   
+   return;
+}
+
+
 
 /*****************************************************************************/
 /* BIAS DAC ROUTINES *********************************************************/
@@ -166,8 +182,10 @@ void setDACmux(DAC_ID id, Int16 MUXChannel)
       AD5360_writeData(cmd, 0, cb0); //disable MUX
    }
    deselectAllSPI();
+   delay_ms(1);
    int16 data = SMon_en | MUXChannel;
    AD5360_writeData(cmd, data, id);//select MUX channel
+   delay_ms(1);
 }
 
 void setVoltage(int16 value, DAC_ID id, DAC_channel channel)

@@ -7,7 +7,7 @@
 
 #define numRec 4
 #define numParam 4
-#define lenParam 10
+#define lenParam 20
 
 typedef struct rx_record
 {
