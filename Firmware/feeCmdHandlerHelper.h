@@ -574,7 +574,7 @@ unsigned int32 getSerNum(int16 addr)
 void getCCDserial(int16 addr, char* serialNumber)
 {
    int8 i=0;
-   for(i=0;i<20;i++)
+   for(i=0;i<19;i++)
    {
       serialNumber[i]=read_eeprom (addr+i);
    }
@@ -594,7 +594,7 @@ void setSerNum(int16 addr, unsigned int32 sn)
 void setCCDserial(int16 addr, char* serialNumber)
 {
    int8 i=0;
-   for(i=0;i<19;i++)
+   for(i=0;i<18;i++)
    {
       write_eeprom (addr+i, serialNumber[i]);
    }
